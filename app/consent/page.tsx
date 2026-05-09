@@ -27,7 +27,10 @@ export default function ConsentPage() {
         }),
       });
       if (res.status === 503) throw new Error("Service not configured — add Supabase env vars in the Vercel dashboard");
-      if (!res.ok) throw new Error("Failed to create session");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || body.error || "Failed to create session");
+      }
       const { sessionId } = await res.json();
       setSessionId(sessionId);
       router.push("/details");
