@@ -1,97 +1,71 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Shield, Camera, FileText, AlertTriangle } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const PolygonFace = dynamic(() => import("@/components/landing/PolygonFace"), { ssr: false });
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="max-w-2xl mx-auto px-4 py-16">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
-            <Camera className="h-8 w-8 text-blue-600" />
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">Facial Triage Assistant</h1>
-          <p className="text-lg text-gray-600 max-w-xl mx-auto">
-            An AI-assisted tool that analyses visible facial patterns and symptoms to help you
-            know when and where to seek care.
+    <div className="relative min-h-screen overflow-hidden" style={{ background: "#fafaf9" }}>
+
+      {/* Navigation */}
+      <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-8 py-6">
+        <span className="text-xs font-semibold tracking-[0.25em] uppercase text-gray-400">
+          Triage
+        </span>
+      </nav>
+
+      {/* Hero */}
+      <div className="relative flex min-h-screen items-center">
+
+        {/* Text block — left */}
+        <div className="relative z-10 flex flex-col justify-center px-8 pt-20 pb-16 sm:px-12 lg:px-20 w-full lg:w-1/2 xl:w-5/12">
+          <p className="mb-5 text-[10px] font-semibold tracking-[0.3em] uppercase text-gray-400">
+            AI-assisted facial triage
           </p>
-        </div>
 
-        {/* Key features */}
-        <div className="grid grid-cols-1 gap-4 mb-10">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Camera className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Guided capture</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Frontal photo, illuminated colour captures, head scan, and brief speech test.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Doctor-ready summary</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Generates a structured note with findings, urgency, and referral guidance.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                  <Shield className="h-5 w-5 text-amber-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Privacy-first</h3>
-                  <p className="text-sm text-muted-foreground">
-                    All images and videos are encrypted and automatically deleted after 24 hours.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          <h1
+            className="mb-6 font-light leading-[1.08] tracking-tight text-gray-900"
+            style={{ fontSize: "clamp(2.6rem, 5vw, 4.2rem)" }}
+          >
+            Know when<br />to seek care.
+          </h1>
 
-        {/* Important notice */}
-        <Card className="border-amber-200 bg-amber-50 mb-8">
-          <CardContent className="pt-6">
-            <div className="flex gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-800">
-                <strong>This is not a diagnostic tool.</strong> Results are visual pattern
-                matches that need verification by a doctor. If you have a medical emergency,
-                call 000 immediately.
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <p className="mb-10 max-w-sm text-base leading-relaxed text-gray-500">
+            A guided visual assessment that surfaces facial patterns and symptom signals,
+            then generates a structured note for your doctor.
+          </p>
 
-        <div className="text-center">
-          <Link href="/consent">
-            <Button size="lg" className="w-full sm:w-auto px-12">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Link
+              href="/consent"
+              className="inline-flex items-center justify-center rounded-full border border-gray-900 px-8 py-3 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-900 hover:text-white"
+            >
               Get started
-            </Button>
-          </Link>
-          <p className="text-xs text-muted-foreground mt-3">
-            Best experienced on Chrome or Firefox desktop. Camera access required.
+            </Link>
+            <span className="text-xs text-gray-400 sm:ml-2">
+              Camera &amp; microphone required
+            </span>
+          </div>
+
+          <p className="mt-8 text-[11px] leading-relaxed text-gray-400 max-w-xs">
+            Not a diagnostic tool. All findings require verification by a qualified clinician.
+            Media deleted after 24 hours.
           </p>
         </div>
+
+        {/* WebGL face — right */}
+        <div
+          className="absolute inset-y-0 right-0 w-full lg:w-[58%] pointer-events-none lg:pointer-events-auto"
+          style={{ opacity: 1 }}
+        >
+          <PolygonFace />
+        </div>
+      </div>
+
+      {/* Explore cue */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5">
+        <span className="text-[10px] tracking-[0.2em] uppercase text-gray-400">Move to explore</span>
+        <div className="h-4 w-px bg-gray-300 animate-pulse" />
       </div>
     </div>
   );
