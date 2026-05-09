@@ -1,5 +1,4 @@
 import type { UrgencyLevel } from "@/lib/inference/types";
-import { AlertTriangle, AlertCircle, Info, CheckCircle } from "lucide-react";
 
 interface UrgencyBannerProps {
   level: UrgencyLevel;
@@ -7,56 +6,43 @@ interface UrgencyBannerProps {
   redFlags: string[];
 }
 
-const CONFIG: Record<
-  UrgencyLevel,
-  { bg: string; border: string; text: string; icon: React.ReactNode; label: string }
-> = {
+const CONFIG: Record<UrgencyLevel, { border: string; label: string; dot: string }> = {
   emergency: {
-    bg: "bg-red-50",
-    border: "border-red-400",
-    text: "text-red-900",
-    icon: <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0" />,
+    border: "border-l-red-500",
     label: "Seek emergency care now",
+    dot: "bg-red-500",
   },
   urgent: {
-    bg: "bg-amber-50",
-    border: "border-amber-400",
-    text: "text-amber-900",
-    icon: <AlertCircle className="h-6 w-6 text-amber-600 flex-shrink-0" />,
-    label: "Seek care promptly (same day)",
+    border: "border-l-amber-500",
+    label: "Seek care promptly — same day",
+    dot: "bg-amber-500",
   },
   routine: {
-    bg: "bg-blue-50",
-    border: "border-blue-400",
-    text: "text-blue-900",
-    icon: <Info className="h-6 w-6 text-blue-600 flex-shrink-0" />,
+    border: "border-l-gray-400",
     label: "Schedule a medical appointment",
+    dot: "bg-gray-400",
   },
   informational: {
-    bg: "bg-green-50",
-    border: "border-green-400",
-    text: "text-green-900",
-    icon: <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0" />,
+    border: "border-l-gray-300",
     label: "No urgent action required",
+    dot: "bg-gray-300",
   },
 };
 
 export function UrgencyBanner({ level, reason, redFlags }: UrgencyBannerProps) {
   const cfg = CONFIG[level];
   return (
-    <div className={`rounded-xl border-2 ${cfg.bg} ${cfg.border} p-4 space-y-2`}>
-      <div className="flex gap-3 items-start">
-        {cfg.icon}
+    <div className={`bg-white border border-gray-100 border-l-4 ${cfg.border} rounded-xl p-4 space-y-2`}>
+      <div className="flex items-start gap-3">
+        <span className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
         <div>
-          <p className={`font-bold text-base ${cfg.text}`}>{cfg.label}</p>
-          <p className={`text-sm mt-0.5 ${cfg.text}`}>{reason}</p>
+          <p className="font-medium text-sm text-gray-900">{cfg.label}</p>
+          <p className="text-sm text-gray-500 mt-0.5">{reason}</p>
         </div>
       </div>
       {redFlags.length > 0 && (
-        <ul className={`text-xs ${cfg.text} list-disc ml-9 space-y-0.5`}>
-          {redFlags.map((f) => (
-            <li key={f}>{f}</li>
-          ))}
+        <ul className="text-xs text-gray-400 list-disc ml-8 space-y-0.5">
+          {redFlags.map((f) => <li key={f}>{f}</li>)}
         </ul>
       )}
     </div>

@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/components/shared/SessionContext";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Printer, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Printer, ArrowLeft } from "lucide-react";
 import { formatDate, formatTime } from "@/lib/utils";
 
 export default function SummaryPage() {
@@ -18,7 +16,6 @@ export default function SummaryPage() {
 
   useEffect(() => {
     if (!sessionId) { router.push("/consent"); return; }
-
     fetch("/api/summary", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -35,111 +32,102 @@ export default function SummaryPage() {
   }, [sessionId]);
 
   function formatSummary(text: string) {
-    const lines = text.split("\n");
-    return lines.map((line, i) => {
+    return text.split("\n").map((line, i) => {
       if (line.match(/^[A-Z\s]+:/)) {
         return (
-          <div key={i} className={i > 0 ? "mt-5" : ""}>
-            <h3 className="font-bold text-sm uppercase tracking-wide text-gray-700 border-b pb-1 mb-2">
+          <div key={i} className={i > 0 ? "mt-6" : ""}>
+            <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-gray-400 border-b border-gray-100 pb-1.5 mb-2">
               {line}
-            </h3>
+            </p>
           </div>
         );
       }
       if (line.startsWith("  - ") || line.startsWith("- ")) {
         return (
-          <li key={i} className="text-sm text-gray-800 ml-4 list-disc">
+          <li key={i} className="text-sm text-gray-600 ml-4 list-disc leading-relaxed">
             {line.replace(/^\s*-\s*/, "")}
           </li>
         );
       }
       if (line.trim() === "") return <br key={i} />;
-      return (
-        <p key={i} className="text-sm text-gray-800">
-          {line}
-        </p>
-      );
+      return <p key={i} className="text-sm text-gray-600 leading-relaxed">{line}</p>;
     });
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
-        <div className="w-8 h-8 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
-        <p className="text-sm text-muted-foreground">Generating doctor summary…</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-5 px-4" style={{ background: "#fafaf9" }}>
+        <div className="w-8 h-8 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
+        <p className="text-sm text-gray-400">Generating doctor summary…</p>
       </div>
     );
   }
 
   if (error || !summaryText) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#fafaf9" }}>
         <div className="text-center space-y-4">
-          <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto" />
-          <p className="text-muted-foreground">{error ?? "Summary unavailable."}</p>
-          <Button onClick={() => router.push("/results")}>Back to results</Button>
+          <p className="text-gray-400 text-sm">{error ?? "Summary unavailable."}</p>
+          <button
+            onClick={() => router.push("/results")}
+            className="rounded-full border border-gray-200 px-6 py-2.5 text-sm text-gray-500 hover:border-gray-400 transition-colors"
+          >
+            Back to results
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-5">
-        {/* Header */}
+    <div className="min-h-screen" style={{ background: "#fafaf9" }}>
+      <div className="max-w-2xl mx-auto px-5 py-10 space-y-6">
         <div className="no-print">
           <button
             onClick={() => router.push("/results")}
-            className="flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground"
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 mb-6 transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" /> Back to results
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to results
           </button>
         </div>
 
         <div className="print-header">
-          <h1 className="text-2xl font-bold">Doctor Triage Summary</h1>
-          <p className="text-sm text-muted-foreground">
-            Generated {formatDate(generatedAt)} at {formatTime(generatedAt)} &middot; Facial Triage Assistant v1.0
+          <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-gray-400 mb-2">Doctor summary</p>
+          <h1 className="text-2xl font-light text-gray-900">Triage note</h1>
+          <p className="text-xs text-gray-400 mt-1">
+            {formatDate(generatedAt)} at {formatTime(generatedAt)} · Facial Triage Assistant v1.0
           </p>
         </div>
 
-        {/* Summary body */}
-        <Card>
-          <CardContent className="pt-6 pb-6">
-            <div className="space-y-1">{formatSummary(summaryText)}</div>
-          </CardContent>
-        </Card>
-
-        {/* Non-diagnostic notice */}
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="pt-4 pb-4">
-            <p className="text-xs text-amber-800">
-              <strong>Important:</strong> This summary was generated by an AI-assisted pattern recognition
-              tool and does not constitute medical advice or a clinical diagnosis. It is intended to
-              support, not replace, the judgement of a qualified health professional.
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Actions */}
-        <div className="flex gap-3 no-print">
-          <Button
-            variant="outline"
-            className="flex-1 gap-2"
-            onClick={() => window.print()}
-          >
-            <Printer className="h-4 w-4" /> Print summary
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={() => router.push("/")}
-          >
-            Start new assessment
-          </Button>
+        <div className="bg-white border border-gray-100 rounded-xl p-6">
+          <div className="space-y-1">{formatSummary(summaryText)}</div>
         </div>
 
-        <p className="text-xs text-muted-foreground text-center no-print">
-          Take this summary to your GP or specialist appointment for follow-up.
+        <div className="border border-gray-100 rounded-xl p-4">
+          <p className="text-xs text-gray-400 leading-relaxed">
+            <strong className="font-medium text-gray-500">Important:</strong> This summary was generated by an AI-assisted pattern recognition
+            tool and does not constitute medical advice or a clinical diagnosis. It is intended to
+            support, not replace, the judgement of a qualified health professional.
+          </p>
+        </div>
+
+        <div className="flex gap-3 no-print">
+          <button
+            onClick={() => window.print()}
+            className="flex-1 flex items-center justify-center gap-2 rounded-full border border-gray-200 py-3 text-sm text-gray-600 hover:border-gray-400 transition-colors"
+          >
+            <Printer className="h-4 w-4" /> Print
+          </button>
+          <button
+            onClick={() => router.push("/")}
+            className="flex-1 rounded-full bg-gray-900 py-3 text-sm text-white hover:bg-gray-700 transition-colors"
+          >
+            New assessment
+          </button>
+        </div>
+
+        <p className="text-xs text-gray-400 text-center no-print">
+          Take this note to your GP or specialist appointment.
         </p>
       </div>
     </div>

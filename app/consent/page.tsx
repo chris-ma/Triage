@@ -2,10 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSession } from "@/components/shared/SessionContext";
-import { Shield, Eye, Clock, Trash2, ChevronRight } from "lucide-react";
+
+const ITEMS = [
+  {
+    label: "What we collect",
+    body: "Facial photos, a short video scan, a speech recording, and your symptom answers. No name or contact information is required.",
+  },
+  {
+    label: "How it is stored",
+    body: "All media is encrypted in transit and at rest. Only our secure servers process your data. It is never sold or shared with third parties.",
+  },
+  {
+    label: "How long we keep it",
+    body: "Your images, videos, and results are automatically deleted 24 hours after your session ends.",
+  },
+  {
+    label: "Your rights",
+    body: "You can stop at any time. Under Australian privacy law, facial biometric data is sensitive information — we treat it accordingly.",
+  },
+];
 
 export default function ConsentPage() {
   const router = useRouter();
@@ -21,10 +37,7 @@ export default function ConsentPage() {
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          consented_at: new Date().toISOString(),
-          consent_version: "1.0",
-        }),
+        body: JSON.stringify({ consented_at: new Date().toISOString(), consent_version: "1.0" }),
       });
       if (res.status === 503) throw new Error("Service not configured — add Supabase env vars in the Vercel dashboard");
       if (!res.ok) {
@@ -41,94 +54,57 @@ export default function ConsentPage() {
     }
   }
 
-  const items = [
-    {
-      icon: <Eye className="h-5 w-5 text-blue-600" />,
-      bg: "bg-blue-100",
-      title: "What we collect",
-      body: "Facial photos, a short video scan, a speech recording, and your symptom answers. No name or contact information is required.",
-    },
-    {
-      icon: <Shield className="h-5 w-5 text-green-600" />,
-      bg: "bg-green-100",
-      title: "How it is stored",
-      body: "All media is encrypted in transit and at rest. Only our secure servers process your data. It is never sold or shared with third parties.",
-    },
-    {
-      icon: <Clock className="h-5 w-5 text-amber-600" />,
-      bg: "bg-amber-100",
-      title: "How long we keep it",
-      body: "Your images, videos, and results are automatically deleted 24 hours after your session ends.",
-    },
-    {
-      icon: <Trash2 className="h-5 w-5 text-red-600" />,
-      bg: "bg-red-100",
-      title: "Your rights",
-      body: "You can stop at any time. Under Australian privacy law, facial biometric data is sensitive information — we treat it accordingly.",
-    },
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="max-w-lg mx-auto w-full px-4 py-10 flex-1">
-        <h1 className="text-2xl font-bold mb-2">Before we begin</h1>
-        <p className="text-muted-foreground mb-6 text-sm">
-          This app uses your camera and microphone to analyse visible facial patterns. Please read
-          what we collect and how we use it.
+    <div className="min-h-screen flex flex-col" style={{ background: "#fafaf9" }}>
+      <div className="max-w-lg mx-auto w-full px-5 py-12 flex-1">
+
+        <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-gray-400 mb-3">
+          Before we begin
+        </p>
+        <h1 className="text-2xl font-light text-gray-900 mb-1.5">Your privacy, explained</h1>
+        <p className="text-sm text-gray-400 mb-10">
+          This app uses your camera and microphone to analyse visible facial patterns.
         </p>
 
-        <div className="space-y-3 mb-8">
-          {items.map((item) => (
-            <Card key={item.title}>
-              <CardContent className="pt-4 pb-4">
-                <div className="flex gap-3">
-                  <div
-                    className={`flex-shrink-0 w-9 h-9 ${item.bg} rounded-full flex items-center justify-center`}
-                  >
-                    {item.icon}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm">{item.title}</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">{item.body}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="space-y-0 mb-10">
+          {ITEMS.map((item, i) => (
+            <div key={item.label} className={`py-5 ${i < ITEMS.length - 1 ? "border-b border-gray-100" : ""}`}>
+              <p className="text-xs font-medium text-gray-900 mb-1">{item.label}</p>
+              <p className="text-sm text-gray-400 leading-relaxed">{item.body}</p>
+            </div>
           ))}
         </div>
 
-        <Card className="border-gray-200 bg-white mb-6">
-          <CardContent className="pt-4 pb-4">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-gray-300"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-              />
-              <span className="text-sm text-gray-700">
-                I understand that this tool is for triage support only and is{" "}
-                <strong>not a medical diagnosis</strong>. I consent to my facial images, video,
-                and symptom data being processed and automatically deleted after 24 hours.
-              </span>
-            </label>
-          </CardContent>
-        </Card>
+        <label className="flex items-start gap-3 cursor-pointer mb-8 p-4 rounded-lg border border-gray-200 bg-white">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-gray-900"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+          />
+          <span className="text-sm text-gray-600 leading-relaxed">
+            I understand that this tool is for triage support only and is{" "}
+            <strong className="font-medium text-gray-900">not a medical diagnosis</strong>. I consent to my facial images,
+            video, and symptom data being processed and automatically deleted after 24 hours.
+          </span>
+        </label>
 
-        {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+        {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
 
         <div className="flex gap-3">
-          <Button variant="outline" onClick={() => router.push("/")} className="flex-1">
+          <button
+            onClick={() => router.push("/")}
+            className="flex-1 rounded-full border border-gray-200 py-3 text-sm text-gray-500 hover:border-gray-400 transition-colors"
+          >
             Decline
-          </Button>
-          <Button
-            className="flex-1 gap-2"
+          </button>
+          <button
             disabled={!agreed || loading}
             onClick={handleConsent}
+            className="flex-1 rounded-full bg-gray-900 py-3 text-sm text-white disabled:opacity-40 hover:bg-gray-700 transition-colors"
           >
             {loading ? "Starting…" : "I consent — continue"}
-            {!loading && <ChevronRight className="h-4 w-4" />}
-          </Button>
+          </button>
         </div>
       </div>
     </div>

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/components/shared/SessionContext";
-import { Button } from "@/components/ui/button";
 
 const STEPS = [
   "Extracting facial features…",
@@ -24,7 +23,6 @@ export default function AnalysisPage() {
   useEffect(() => {
     if (!sessionId) { router.push("/consent"); return; }
 
-    // Cycle status messages while waiting
     const interval = setInterval(() => {
       setStepIndex((prev) => Math.min(prev + 1, STEPS.length - 1));
     }, 900);
@@ -49,29 +47,36 @@ export default function AnalysisPage() {
   }, [sessionId]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gray-50">
-      <div className="max-w-sm w-full text-center space-y-6">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4" style={{ background: "#fafaf9" }}>
+      <div className="max-w-sm w-full text-center space-y-8">
         {!error ? (
           <>
-            <div className="w-16 h-16 mx-auto rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
+            <div className="w-10 h-10 mx-auto rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
             <div>
-              <h2 className="text-xl font-semibold mb-2">Analysing your captures</h2>
-              <p className="text-sm text-muted-foreground min-h-[1.5rem] transition-all">
+              <h2 className="text-xl font-light text-gray-900 mb-2">Analysing your captures</h2>
+              <p className="text-sm text-gray-400 min-h-[1.5rem] transition-all">
                 {STEPS[stepIndex]}
               </p>
             </div>
-            <p className="text-xs text-muted-foreground">This usually takes 10–20 seconds.</p>
+            <p className="text-xs text-gray-300">This usually takes 10–20 seconds.</p>
           </>
         ) : (
           <>
-            <div className="text-4xl">⚠️</div>
-            <h2 className="text-xl font-semibold">Something went wrong</h2>
-            <p className="text-sm text-muted-foreground">{error}</p>
+            <h2 className="text-xl font-light text-gray-900">Something went wrong</h2>
+            <p className="text-sm text-gray-400">{error}</p>
             <div className="flex flex-col gap-2">
-              <Button onClick={() => window.location.reload()}>Try again</Button>
-              <Button variant="outline" onClick={() => router.push("/")}>
+              <button
+                onClick={() => window.location.reload()}
+                className="rounded-full bg-gray-900 py-3 text-sm text-white hover:bg-gray-700 transition-colors"
+              >
+                Try again
+              </button>
+              <button
+                onClick={() => router.push("/")}
+                className="rounded-full border border-gray-200 py-3 text-sm text-gray-500 hover:border-gray-400 transition-colors"
+              >
                 Start over
-              </Button>
+              </button>
             </div>
           </>
         )}

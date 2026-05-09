@@ -10,10 +10,9 @@ export default function PolygonFace() {
     const container = containerRef.current;
     if (!container) return;
 
-    // Scene
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-    camera.position.z = 3.2;
+    const camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.z = 3.4;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -21,73 +20,71 @@ export default function PolygonFace() {
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
 
-    // Geometry — icosahedron displaced into a head-like shape
-    const geo = new THREE.IcosahedronGeometry(1, 3);
-    const pos = geo.attributes.position;
+    // Base icosahedron — detail 3 gives ~320 faces, enough for a face silhouette
+    const base = new THREE.IcosahedronGeometry(1, 3);
+    const pos = base.attributes.position;
 
     for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const y = pos.getY(i);
-      const z = pos.getZ(i);
+      let x = pos.getX(i);
+      let y = pos.getY(i);
+      let z = pos.getZ(i);
 
-      // Elongate vertically (head is taller than wide)
-      const ny = y * 1.22;
+      // Elongate vertically
+      y *= 1.28;
+
       // Taper chin
-      const chinFactor = y < -0.3 ? 1 - (Math.abs(y + 0.3) * 0.35) : 1;
-      const nx = x * chinFactor * 0.92;
-      const nz = z * chinFactor * 0.88;
+      if (y < -0.18) {
+        const t = Math.min(1, (-y - 0.18) / 0.82);
+        x *= 1 - t * 0.52;
+        z *= 1 - t * 0.28;
+      }
 
-      // Eye socket indentations (front-facing, two slight depressions)
-      const eyeL = Math.sqrt((x + 0.32) ** 2 + (y - 0.18) ** 2 + (z - 0.85) ** 2);
-      const eyeR = Math.sqrt((x - 0.32) ** 2 + (y - 0.18) ** 2 + (z - 0.85) ** 2);
-      const eyeDent = Math.max(0, 1 - eyeL * 4) * 0.07 + Math.max(0, 1 - eyeR * 4) * 0.07;
+      // Slight forehead narrowing
+      if (y > 0.65) {
+        const t = Math.min(1, (y - 0.65) / 0.6);
+        x *= 1 - t * 0.12;
+      }
 
-      // Nose bridge slight protrusion
-      const nose = Math.max(0, 1 - Math.sqrt(x ** 2 + (y + 0.05) ** 2 + (z - 0.92) ** 2) * 5) * 0.06;
+      // Front-face only deformations
+      if (z > 0) {
+        // Eye socket depressions
+        const eyeL = Math.sqrt((x + 0.31) ** 2 + (y - 0.22) ** 2);
+        const eyeR = Math.sqrt((x - 0.31) ** 2 + (y - 0.22) ** 2);
+        const dent = (Math.max(0, 0.26 - eyeL) + Math.max(0, 0.26 - eyeR)) * 0.45;
 
-      const scale = 1 - eyeDent + nose;
-      pos.setXYZ(i, nx * scale, ny, nz * scale);
+        // Nose bridge protrusion
+        const nose = Math.max(0, 0.14 - Math.sqrt(x ** 2 + (y + 0.02) ** 2)) * 0.35;
+
+        z += nose - dent;
+      }
+
+      pos.setXYZ(i, x, y, z);
     }
 
-    geo.computeVertexNormals();
+    base.computeVertexNormals();
 
-    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-    const mat = new THREE.MeshPhongMaterial({
-      color: isDark ? 0xd4cfc8 : 0xf0ede8,
-      specular: 0x222222,
-      shininess: 8,
-      flatShading: true,
-    });
-
-    const mesh = new THREE.Mesh(geo, mat);
-    scene.add(mesh);
-
-    // Ground shadow ellipse
-    const shadowGeo = new THREE.CircleGeometry(0.72, 32);
-    const shadowMat = new THREE.MeshBasicMaterial({
-      color: isDark ? 0x000000 : 0x000000,
+    // Wireframe edges
+    const edgesGeo = new THREE.EdgesGeometry(base);
+    const edgesMat = new THREE.LineBasicMaterial({
+      color: 0x374151,
       transparent: true,
-      opacity: 0.07,
+      opacity: 0.18,
     });
-    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
-    shadow.rotation.x = -Math.PI / 2;
-    shadow.position.set(0, -1.35, 0);
-    scene.add(shadow);
+    const lines = new THREE.LineSegments(edgesGeo, edgesMat);
+    scene.add(lines);
 
-    // Lighting
-    scene.add(new THREE.AmbientLight(0xffffff, 0.45));
-    const keyLight = new THREE.DirectionalLight(0xfff5e0, 1.3);
-    keyLight.position.set(-2, 3, 2);
-    scene.add(keyLight);
-    const fillLight = new THREE.DirectionalLight(0xc8d8f0, 0.55);
-    fillLight.position.set(3, -1, 1);
-    scene.add(fillLight);
-    const rimLight = new THREE.PointLight(0xffffff, 0.4, 10);
-    rimLight.position.set(0, 2, -2);
-    scene.add(rimLight);
+    // Vertex dots
+    const dotsMat = new THREE.PointsMaterial({
+      color: 0x1f2937,
+      size: 0.032,
+      transparent: true,
+      opacity: 0.45,
+      sizeAttenuation: true,
+    });
+    const dots = new THREE.Points(base, dotsMat);
+    scene.add(dots);
 
-    // Interaction state
+    // Interaction
     const target = { x: 0, y: 0 };
     const current = { x: 0, y: 0 };
     let isPointerActive = false;
@@ -95,31 +92,25 @@ export default function PolygonFace() {
 
     function onMouseMove(e: MouseEvent) {
       isPointerActive = true;
-      target.x = ((e.clientX / window.innerWidth) - 0.5) * 0.7;
-      target.y = -((e.clientY / window.innerHeight) - 0.5) * 0.5;
+      target.x = ((e.clientX / window.innerWidth) - 0.5) * 0.65;
+      target.y = -((e.clientY / window.innerHeight) - 0.5) * 0.45;
     }
 
     function onTouchMove(e: TouchEvent) {
       if (!e.touches[0]) return;
       isPointerActive = true;
-      target.x = ((e.touches[0].clientX / window.innerWidth) - 0.5) * 0.7;
-      target.y = -((e.touches[0].clientY / window.innerHeight) - 0.5) * 0.5;
+      target.x = ((e.touches[0].clientX / window.innerWidth) - 0.5) * 0.65;
+      target.y = -((e.touches[0].clientY / window.innerHeight) - 0.5) * 0.45;
     }
 
-    function onPointerLeave() {
-      isPointerActive = false;
-    }
-
-    function onScroll() {
-      scrollY = window.scrollY;
-    }
+    function onPointerLeave() { isPointerActive = false; }
+    function onScroll() { scrollY = window.scrollY; }
 
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("touchmove", onTouchMove, { passive: true });
     window.addEventListener("mouseleave", onPointerLeave);
     window.addEventListener("scroll", onScroll, { passive: true });
 
-    // Resize
     const ro = new ResizeObserver(() => {
       camera.aspect = container.clientWidth / container.clientHeight;
       camera.updateProjectionMatrix();
@@ -127,7 +118,6 @@ export default function PolygonFace() {
     });
     ro.observe(container);
 
-    // Animation loop
     let raf = 0;
     let t = 0;
     const clock = new THREE.Clock();
@@ -137,24 +127,25 @@ export default function PolygonFace() {
       const delta = clock.getDelta();
       t += delta;
 
-      // Idle drift when no pointer input
-      const idleX = isPointerActive ? 0 : Math.sin(t * 0.28) * 0.08;
-      const idleY = isPointerActive ? 0 : Math.sin(t * 0.19) * 0.05;
+      const idleX = isPointerActive ? 0 : Math.sin(t * 0.27) * 0.07;
+      const idleY = isPointerActive ? 0 : Math.sin(t * 0.18) * 0.04;
 
-      // Damp toward target
       current.x += ((target.x + idleX) - current.x) * 0.045;
       current.y += ((target.y + idleY) - current.y) * 0.045;
 
-      mesh.rotation.y = current.x;
-      mesh.rotation.x = current.y;
+      lines.rotation.y = current.x;
+      lines.rotation.x = current.y;
+      dots.rotation.y = current.x;
+      dots.rotation.x = current.y;
 
-      // Subtle breathing scale
-      const breathe = 1 + Math.sin(t * 0.6) * 0.008;
-      mesh.scale.setScalar(breathe);
+      // Breathing
+      const breathe = 1 + Math.sin(t * 0.55) * 0.007;
+      lines.scale.setScalar(breathe);
+      dots.scale.setScalar(breathe);
 
       // Scroll parallax
-      mesh.position.y = -scrollY * 0.002;
-      shadow.position.y = -1.35 - scrollY * 0.002;
+      lines.position.y = -scrollY * 0.0018;
+      dots.position.y = -scrollY * 0.0018;
 
       renderer.render(scene, camera);
     }
@@ -169,13 +160,11 @@ export default function PolygonFace() {
       window.removeEventListener("mouseleave", onPointerLeave);
       window.removeEventListener("scroll", onScroll);
       renderer.dispose();
-      geo.dispose();
-      mat.dispose();
-      shadowGeo.dispose();
-      shadowMat.dispose();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
+      base.dispose();
+      edgesGeo.dispose();
+      edgesMat.dispose();
+      dotsMat.dispose();
+      if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
   }, []);
 
