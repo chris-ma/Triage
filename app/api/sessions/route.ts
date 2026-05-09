@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
 
+function notConfigured() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.json(
+      { error: "Service not configured — set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel dashboard" },
+      { status: 503 }
+    );
+  }
+  return null;
+}
+
 const createSessionSchema = z.object({
   consented_at: z.string(),
   consent_version: z.string().default("1.0"),
@@ -14,6 +24,8 @@ const updateSessionSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const cfg = notConfigured();
+  if (cfg) return cfg;
   try {
     const body = await req.json();
     const parsed = createSessionSchema.safeParse(body);
@@ -45,6 +57,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const cfg = notConfigured();
+  if (cfg) return cfg;
   try {
     const body = await req.json();
     const parsed = updateSessionSchema.safeParse(body);

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
+
+function notConfigured() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.json({ error: "Service not configured" }, { status: 503 });
+  }
+  return null;
+}
 import { extractFeatures } from "@/lib/inference/mockEngine";
 import { scoreConditions } from "@/lib/inference/scorer";
 import { determineUrgency } from "@/lib/inference/triageRules";
@@ -9,6 +16,8 @@ import type { MediaAsset } from "@/lib/inference/types";
 const schema = z.object({ sessionId: z.string().uuid() });
 
 export async function POST(req: NextRequest) {
+  const cfg = notConfigured();
+  if (cfg) return cfg;
   try {
     const body = await req.json();
     const parsed = schema.safeParse(body);

@@ -4,6 +4,13 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { createSignedUploadUrl } from "@/lib/supabase/storage";
 import type { AssetType } from "@/lib/inference/types";
 
+function notConfigured() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.json({ error: "Service not configured" }, { status: 503 });
+  }
+  return null;
+}
+
 const schema = z.object({
   sessionId: z.string().uuid(),
   assetType: z.enum([
@@ -19,6 +26,8 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const cfg = notConfigured();
+  if (cfg) return cfg;
   try {
     const body = await req.json();
     const parsed = schema.safeParse(body);

@@ -26,12 +26,13 @@ export default function ConsentPage() {
           consent_version: "1.0",
         }),
       });
+      if (res.status === 503) throw new Error("Service not configured — add Supabase env vars in the Vercel dashboard");
       if (!res.ok) throw new Error("Failed to create session");
       const { sessionId } = await res.json();
       setSessionId(sessionId);
       router.push("/details");
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
