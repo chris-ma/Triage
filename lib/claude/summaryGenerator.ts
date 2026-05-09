@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { sha256 } from "@/lib/utils";
 import type { UrgencyLevel, ConditionScore } from "@/lib/inference/types";
 
@@ -79,20 +79,25 @@ ${JSON.stringify(
 export async function generateDoctorSummary(
   input: SummaryInput
 ): Promise<{ summaryText: string; modelUsed: string; promptHash: string }> {
-  const client = new Anthropic();
-  const model = process.env.CLAUDE_MODEL ?? "claude-sonnet-4-6";
+  const client = new OpenAI({
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseURL: "https://api.deepseek.com",
+  });
+
+  const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
   const userPrompt = buildUserPrompt(input);
   const promptHash = await sha256(userPrompt);
 
-  const message = await client.messages.create({
+  const response = await client.chat.completions.create({
     model,
     max_tokens: 1200,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userPrompt }],
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userPrompt },
+    ],
   });
 
-  const summaryText =
-    message.content[0]?.type === "text" ? message.content[0].text : "";
+  const summaryText = response.choices[0]?.message?.content ?? "";
 
   return { summaryText, modelUsed: model, promptHash };
 }
