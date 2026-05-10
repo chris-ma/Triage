@@ -29,8 +29,11 @@ export const CameraPreview = forwardRef<CameraPreviewHandle, CameraPreviewProps>
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext("2d")!.drawImage(video, 0, 0);
+        // iOS Safari doesn't support WebP — fall back to JPEG
+        const supportsWebP = canvas.toDataURL("image/webp").startsWith("data:image/webp");
+        const mimeType = supportsWebP ? "image/webp" : "image/jpeg";
         return new Promise<Blob | null>((resolve) =>
-          canvas.toBlob(resolve, "image/webp", 0.92)
+          canvas.toBlob(resolve, mimeType, 0.92)
         );
       },
       getStream: () => streamRef.current,
