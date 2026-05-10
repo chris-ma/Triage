@@ -32,7 +32,10 @@ export function useMediaUpload(sessionId: string | null) {
         body: blob,
         headers: { "Content-Type": blob.type },
       });
-      if (!uploadRes.ok) throw new Error("Upload failed");
+      if (!uploadRes.ok) {
+        const body = await uploadRes.text().catch(() => "");
+        throw new Error(`Upload failed (${uploadRes.status})${body ? `: ${body.slice(0, 120)}` : ""}`);
+      }
       return true;
     } catch (err) {
       setError((err as Error).message);

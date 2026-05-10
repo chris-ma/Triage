@@ -11,8 +11,8 @@ export default function PolygonFace() {
     if (!container) return;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.1, 100);
-    camera.position.z = 3.4;
+    const camera = new THREE.PerspectiveCamera(38, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.z = 4.2;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -68,17 +68,17 @@ export default function PolygonFace() {
     const edgesMat = new THREE.LineBasicMaterial({
       color: 0x374151,
       transparent: true,
-      opacity: 0.18,
+      opacity: 0.1,
     });
     const lines = new THREE.LineSegments(edgesGeo, edgesMat);
     scene.add(lines);
 
     // Vertex dots
     const dotsMat = new THREE.PointsMaterial({
-      color: 0x1f2937,
-      size: 0.032,
+      color: 0x374151,
+      size: 0.025,
       transparent: true,
-      opacity: 0.45,
+      opacity: 0.28,
       sizeAttenuation: true,
     });
     const dots = new THREE.Points(base, dotsMat);
