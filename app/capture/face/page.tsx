@@ -5,10 +5,9 @@ import { useRouter } from "next/navigation";
 import { CameraPreview, type CameraPreviewHandle } from "@/components/capture/CameraPreview";
 import { FaceOvalGuide } from "@/components/capture/FaceOvalGuide";
 import { StepLayout } from "@/components/shared/StepLayout";
-import { Button } from "@/components/ui/button";
 import { useSession } from "@/components/shared/SessionContext";
 import { useMediaUpload } from "@/lib/hooks/useMediaUpload";
-import { Camera, RefreshCw, Check } from "lucide-react";
+import { RefreshCw, Check } from "lucide-react";
 
 export default function FaceCapturePage() {
   const router = useRouter();
@@ -33,52 +32,50 @@ export default function FaceCapturePage() {
     if (ok) router.push("/capture/flash");
   }
 
-  function retake() {
-    setPreview(null);
-    setCapturedBlob(null);
-  }
-
   return (
-    <StepLayout
-      step={2}
-      totalSteps={7}
-      title="Face-on photo"
-      subtitle="Position your face within the oval. Look directly at the camera with a neutral expression."
-    >
-      <div className="space-y-4">
+    <StepLayout step={2} totalSteps={7} title="Face-on photo" subtitle="Position your face within the oval and tap the screen to capture.">
+      <div className="space-y-3">
         <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-black">
           {!preview ? (
             <>
               <CameraPreview ref={cameraRef} className="absolute inset-0" />
               <FaceOvalGuide />
+              {/* Full-screen tap target with shutter affordance */}
+              <button
+                onClick={capture}
+                className="absolute inset-0 w-full h-full flex flex-col items-center justify-end pb-8"
+                aria-label="Take photo"
+              >
+                <span className="text-[11px] tracking-widest uppercase text-white/60 mb-3 select-none">Tap to capture</span>
+                <span className="h-16 w-16 rounded-full border-4 border-white/80 bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+                  <span className="h-11 w-11 rounded-full bg-white/90" />
+                </span>
+              </button>
             </>
           ) : (
-            <img src={preview} alt="Captured" className="w-full h-full object-cover" />
+            <>
+              <img src={preview} alt="Captured" className="w-full h-full object-cover" />
+              <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-3 px-6">
+                <button
+                  onClick={() => { setPreview(null); setCapturedBlob(null); }}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-full bg-black/50 backdrop-blur-sm py-3 text-sm text-white"
+                >
+                  <RefreshCw className="h-4 w-4" /> Retake
+                </button>
+                <button
+                  onClick={confirm}
+                  disabled={uploading}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-full bg-white py-3 text-sm font-medium text-gray-900 disabled:opacity-50"
+                >
+                  {uploading ? "Uploading…" : <><Check className="h-4 w-4" /> Use this</>}
+                </button>
+              </div>
+            </>
           )}
         </div>
 
-        {(error || uploadError) && (
-          <p className="text-sm text-red-600">{error ?? uploadError}</p>
-        )}
-
-        {!preview ? (
-          <Button className="w-full gap-2" onClick={capture}>
-            <Camera className="h-4 w-4" /> Take photo
-          </Button>
-        ) : (
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1 gap-2" onClick={retake}>
-              <RefreshCw className="h-4 w-4" /> Retake
-            </Button>
-            <Button className="flex-1 gap-2" onClick={confirm} disabled={uploading}>
-              {uploading ? "Uploading…" : <><Check className="h-4 w-4" /> Use this photo</>}
-            </Button>
-          </div>
-        )}
-
-        <p className="text-xs text-muted-foreground text-center">
-          Good lighting matters. Face a window or a bright lamp if possible.
-        </p>
+        {(error || uploadError) && <p className="text-sm text-red-500">{error ?? uploadError}</p>}
+        <p className="text-xs text-gray-400 text-center">Good lighting matters. Face a window or bright lamp if possible.</p>
       </div>
     </StepLayout>
   );
