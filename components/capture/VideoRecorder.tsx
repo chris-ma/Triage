@@ -40,9 +40,10 @@ export const VideoRecorder = forwardRef<VideoRecorderHandle, VideoRecorderProps>
         if (!stream || recording) return;
         chunksRef.current = [];
         const mimeType = pickMimeType();
-        const recorderOpts: MediaRecorderInit = { videoBitsPerSecond: 1_500_000 };
-        if (mimeType) recorderOpts.mimeType = mimeType;
-        const recorder = new MediaRecorder(stream, recorderOpts);
+        const recorder = new MediaRecorder(stream, {
+          ...(mimeType ? { mimeType } : {}),
+          videoBitsPerSecond: 1_500_000,
+        });
         recorderRef.current = recorder;
 
         recorder.ondataavailable = (e) => {
