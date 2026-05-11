@@ -7,7 +7,7 @@ export async function createSignedUploadUrl(
   mimeType: string
 ): Promise<{ signedUrl: string; path: string }> {
   const supabase = createServiceClient();
-  const ext = mimeType.includes("video") ? "webm" : mimeType.includes("png") ? "png" : mimeType.includes("jpeg") ? "jpg" : "webp";
+  const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("video") ? "webm" : mimeType.includes("png") ? "png" : mimeType.includes("jpeg") ? "jpg" : "webp";
   const path = `${sessionId}/${assetType}-${Date.now()}.${ext}`;
 
   const { data, error } = await supabase.storage

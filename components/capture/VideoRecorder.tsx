@@ -2,6 +2,20 @@
 
 import { useRef, useState, forwardRef, useImperativeHandle } from "react";
 
+function pickMimeType(): string {
+  const candidates = [
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm",
+    "video/mp4;codecs=avc1",
+    "video/mp4",
+  ];
+  for (const t of candidates) {
+    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) return t;
+  }
+  return ""; // let the browser choose
+}
+
 export interface VideoRecorderHandle {
   start: () => void;
   stop: () => void;
@@ -25,17 +39,18 @@ export const VideoRecorder = forwardRef<VideoRecorderHandle, VideoRecorderProps>
       start: () => {
         if (!stream || recording) return;
         chunksRef.current = [];
-        const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-          ? "video/webm;codecs=vp9"
-          : "video/webm";
-        const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 1_500_000 });
+        const mimeType = pickMimeType();
+        const recorderOpts: MediaRecorderInit = { videoBitsPerSecond: 1_500_000 };
+        if (mimeType) recorderOpts.mimeType = mimeType;
+        const recorder = new MediaRecorder(stream, recorderOpts);
         recorderRef.current = recorder;
 
         recorder.ondataavailable = (e) => {
           if (e.data.size > 0) chunksRef.current.push(e.data);
         };
         recorder.onstop = () => {
-          const blob = new Blob(chunksRef.current, { type: mimeType });
+          // Use recorder.mimeType — the actual type the browser negotiated
+          const blob = new Blob(chunksRef.current, { type: recorder.mimeType || mimeType });
           onRecorded(blob);
         };
 
