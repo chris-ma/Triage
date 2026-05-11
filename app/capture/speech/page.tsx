@@ -18,7 +18,7 @@ export default function SpeechCapturePage() {
   const { upload, uploading, error: uploadError } = useMediaUpload(sessionId);
   const cameraRef = useRef<CameraPreviewHandle>(null);
   const recorderRef = useRef<VideoRecorderHandle>(null);
-  const [phase, setPhase] = useState<"ready" | "countdown" | "recording" | "review">("ready");
+  const [phase, setPhase] = useState<"waiting" | "countdown" | "recording" | "review">("waiting");
   const [countdown, setCountdown] = useState(5);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -28,7 +28,12 @@ export default function SpeechCapturePage() {
 
   useEffect(() => {
     if (phase !== "countdown") return;
-    if (countdown <= 0) { recorderRef.current?.start(); setPhase("recording"); return; }
+    if (countdown <= 0) {
+      // VideoRecorder is already mounted during countdown, so ref is live
+      recorderRef.current?.start();
+      setPhase("recording");
+      return;
+    }
     const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [phase, countdown]);
@@ -49,7 +54,7 @@ export default function SpeechCapturePage() {
   const stream = cameraRef.current?.getStream() ?? null;
 
   return (
-    <StepLayout step={5} totalSteps={7} title="Read & speech test" subtitle="Read the sentence aloud, then tap the screen to start recording.">
+    <StepLayout step={5} totalSteps={7} title="Read & speech test" subtitle="Read the sentence below aloud — recording starts automatically.">
       <div className="space-y-3">
         {/* Script card — stays above fold */}
         <div className="rounded-xl border border-gray-100 bg-white px-4 py-3">
@@ -60,11 +65,15 @@ export default function SpeechCapturePage() {
         <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-black">
           {phase !== "review" ? (
             <>
-              <CameraPreview ref={cameraRef} audio={true} className="absolute inset-0" />
+              <CameraPreview ref={cameraRef} audio={true} className="absolute inset-0" onReady={startCountdown} />
+
+              {/* Keep VideoRecorder mounted during countdown so ref is live when start() fires */}
+              {(phase === "countdown" || phase === "recording") && (
+                <VideoRecorder ref={recorderRef} stream={stream} onRecorded={handleRecorded} maxSeconds={8} />
+              )}
 
               {phase === "recording" && (
                 <>
-                  <VideoRecorder ref={recorderRef} stream={stream} onRecorded={handleRecorded} maxSeconds={8} />
                   <TaskOverlay instruction="Read the sentence aloud" subtext="Speak clearly and face the camera" animate="none" />
                   <button
                     onClick={() => recorderRef.current?.stop()}
@@ -86,22 +95,9 @@ export default function SpeechCapturePage() {
                     className="text-white font-light drop-shadow-lg"
                     style={{ fontSize: "6rem", lineHeight: 1 }}
                   >
-                    {countdown === 0 ? "" : countdown}
+                    {countdown > 0 ? countdown : ""}
                   </span>
                 </div>
-              )}
-
-              {phase === "ready" && (
-                <button
-                  onClick={startCountdown}
-                  className="absolute inset-0 w-full h-full flex flex-col items-center justify-end pb-8"
-                  aria-label="Start recording"
-                >
-                  <span className="text-[11px] tracking-widest uppercase text-white/60 mb-3 select-none">Tap to record</span>
-                  <span className="h-16 w-16 rounded-full border-4 border-white/80 bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg active:scale-95 transition-transform">
-                    <span className="h-6 w-6 rounded-full bg-red-400" />
-                  </span>
-                </button>
               )}
             </>
           ) : (
@@ -109,7 +105,7 @@ export default function SpeechCapturePage() {
               {previewUrl && <video src={previewUrl} className="w-full h-full object-cover" controls playsInline />}
               <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-3 px-6">
                 <button
-                  onClick={() => { setBlob(null); setPreviewUrl(null); setPhase("ready"); }}
+                  onClick={() => { setBlob(null); setPreviewUrl(null); startCountdown(); }}
                   className="flex-1 flex items-center justify-center gap-2 rounded-full bg-black/50 backdrop-blur-sm py-3 text-sm text-white"
                 >
                   <RefreshCw className="h-4 w-4" /> Retake

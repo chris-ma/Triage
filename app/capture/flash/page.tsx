@@ -6,7 +6,6 @@ import { CameraPreview, type CameraPreviewHandle } from "@/components/capture/Ca
 import { StepLayout } from "@/components/shared/StepLayout";
 import { useSession } from "@/components/shared/SessionContext";
 import { useMediaUpload } from "@/lib/hooks/useMediaUpload";
-import { Zap } from "lucide-react";
 import type { AssetType } from "@/lib/inference/types";
 
 const FLASH_ASSETS: AssetType[] = ["photo_flash_1", "photo_flash_2", "photo_flash_3"];
@@ -16,15 +15,12 @@ export default function FlashCapturePage() {
   const { sessionId } = useSession();
   const { upload } = useMediaUpload(sessionId);
   const cameraRef = useRef<CameraPreviewHandle>(null);
-  const [status, setStatus] = useState<"ready" | "countdown" | "flashing" | "done">("ready");
+  const [status, setStatus] = useState<"waiting" | "countdown" | "flashing" | "done">("waiting");
   const [countdown, setCountdown] = useState(5);
   const [count, setCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  function startCountdown() {
-    setCountdown(5);
-    setStatus("countdown");
-  }
+  function startCountdown() { setCountdown(5); setStatus("countdown"); }
 
   const runFlashSequence = useCallback(async () => {
     setStatus("flashing");
@@ -46,7 +42,7 @@ export default function FlashCapturePage() {
 
     for (let i = 0; i < blobs.length; i++) {
       const ok = await upload(blobs[i]!, FLASH_ASSETS[i]!);
-      if (!ok) { setError("Upload failed. Please try again."); setStatus("ready"); return; }
+      if (!ok) { setError("Upload failed. Please try again."); setStatus("waiting"); return; }
     }
 
     setStatus("done");
@@ -61,23 +57,10 @@ export default function FlashCapturePage() {
   }, [status, countdown, runFlashSequence]);
 
   return (
-    <StepLayout step={3} totalSteps={7} title="Screen-lit captures" subtitle="Tap the screen — it will flash white and take 3 quick photos for accurate skin colour analysis.">
+    <StepLayout step={3} totalSteps={7} title="Screen-lit captures" subtitle="Hold still — the screen will flash and take 3 photos automatically.">
       <div className="space-y-3">
         <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-black">
-          <CameraPreview ref={cameraRef} className="absolute inset-0" />
-
-          {status === "ready" && (
-            <button
-              onClick={startCountdown}
-              className="absolute inset-0 w-full h-full flex flex-col items-center justify-end pb-8"
-              aria-label="Start flash capture"
-            >
-              <span className="text-[11px] tracking-widest uppercase text-white/60 mb-3 select-none">Tap to start</span>
-              <span className="h-16 w-16 rounded-full border-4 border-white/80 bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg active:scale-95 transition-transform">
-                <Zap className="h-6 w-6 text-white" />
-              </span>
-            </button>
-          )}
+          <CameraPreview ref={cameraRef} className="absolute inset-0" onReady={startCountdown} />
 
           {status === "countdown" && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -86,7 +69,7 @@ export default function FlashCapturePage() {
                 className="text-white font-light drop-shadow-lg"
                 style={{ fontSize: "6rem", lineHeight: 1 }}
               >
-                {countdown === 0 ? "" : countdown}
+                {countdown > 0 ? countdown : ""}
               </span>
             </div>
           )}
