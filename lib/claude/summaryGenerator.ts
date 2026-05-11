@@ -27,7 +27,7 @@ function buildUserPrompt(input: SummaryInput): string {
   const groups = input.conditionGroups
     .map(
       (g) =>
-        `  - ${g.label} (${g.confidence} confidence${g.showPercentage ? `, ${g.matchScore}% pattern match` : ""}): ${g.featuresMatched.join(", ") || "visual pattern match"}`
+        `  - ${g.label} (${g.confidence} confidence${g.showPercentage ? `, ${g.matchScore}% pattern match` : ""}): ${(g.featuresMatched ?? []).join(", ") || "visual pattern match"}`
     )
     .join("\n");
 

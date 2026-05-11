@@ -4,7 +4,10 @@ import { createServiceClient } from "@/lib/supabase/server";
 
 function notConfigured() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return NextResponse.json({ error: "Service not configured" }, { status: 503 });
+    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  }
+  if (!process.env.DEEPSEEK_API_KEY) {
+    return NextResponse.json({ error: "DEEPSEEK_API_KEY is not set — add it in Vercel environment variables" }, { status: 503 });
   }
   return null;
 }

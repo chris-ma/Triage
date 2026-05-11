@@ -22,11 +22,12 @@ export default function SummaryPage() {
       body: JSON.stringify({ sessionId }),
     })
       .then(async (res) => {
-        if (!res.ok) throw new Error("Failed to generate summary");
-        return res.json();
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Failed to generate summary");
+        return data;
       })
       .then((data) => setSummaryText(data.summaryText))
-      .catch(() => setError("Could not generate summary. Please try again."))
+      .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
