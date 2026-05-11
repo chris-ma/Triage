@@ -22,7 +22,6 @@ export default function SpeechCapturePage() {
   const [countdown, setCountdown] = useState(5);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   function startCountdown() { setCountdown(5); setPhase("countdown"); }
 
@@ -48,7 +47,6 @@ export default function SpeechCapturePage() {
     if (!blob) return;
     const ok = await upload(blob, "video_speech");
     if (ok) router.push("/intake");
-    else setError("Upload failed. Please try again.");
   }
 
   const stream = cameraRef.current?.getStream() ?? null;
@@ -122,7 +120,7 @@ export default function SpeechCapturePage() {
           )}
         </div>
 
-        {(error || uploadError) && <p className="text-sm text-red-500">{error ?? uploadError}</p>}
+        {uploadError && <p className="text-sm text-red-500">{uploadError}</p>}
       </div>
     </StepLayout>
   );

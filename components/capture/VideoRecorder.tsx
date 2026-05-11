@@ -31,7 +31,7 @@ export const VideoRecorder = forwardRef<VideoRecorderHandle, VideoRecorderProps>
   ({ stream, onRecorded, maxSeconds = 10 }, ref) => {
     const recorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<BlobPart[]>([]);
-    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [recording, setRecording] = useState(false);
     const [secondsLeft, setSecondsLeft] = useState(maxSeconds);
 
@@ -50,8 +50,10 @@ export const VideoRecorder = forwardRef<VideoRecorderHandle, VideoRecorderProps>
           if (e.data.size > 0) chunksRef.current.push(e.data);
         };
         recorder.onstop = () => {
-          // Use recorder.mimeType — the actual type the browser negotiated
-          const blob = new Blob(chunksRef.current, { type: recorder.mimeType || mimeType });
+          // Strip codec params (e.g. video/mp4;codecs=avc1 → video/mp4) so the
+          // Content-Type matches the bucket's allowed_mime_types exactly
+          const type = (recorder.mimeType || mimeType).split(";")[0] || "video/mp4";
+          const blob = new Blob(chunksRef.current, { type });
           onRecorded(blob);
         };
 
@@ -69,10 +71,10 @@ export const VideoRecorder = forwardRef<VideoRecorderHandle, VideoRecorderProps>
             setRecording(false);
           }
         }, 1000);
-        timerRef.current = interval as unknown as ReturnType<typeof setTimeout>;
+        timerRef.current = interval;
       },
       stop: () => {
-        if (timerRef.current) clearTimeout(timerRef.current);
+        if (timerRef.current) clearInterval(timerRef.current);
         recorderRef.current?.stop();
         setRecording(false);
       },
