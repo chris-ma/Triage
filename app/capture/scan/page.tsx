@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CameraPreview, type CameraPreviewHandle } from "@/components/capture/CameraPreview";
 import { TaskOverlay } from "@/components/capture/TaskOverlay";
@@ -16,12 +16,20 @@ export default function ScanCapturePage() {
   const { upload, uploading, error: uploadError } = useMediaUpload(sessionId);
   const cameraRef = useRef<CameraPreviewHandle>(null);
   const recorderRef = useRef<VideoRecorderHandle>(null);
-  const [phase, setPhase] = useState<"ready" | "recording" | "review">("ready");
+  const [phase, setPhase] = useState<"ready" | "countdown" | "recording" | "review">("ready");
+  const [countdown, setCountdown] = useState(5);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function startRecording() { recorderRef.current?.start(); setPhase("recording"); }
+  function startCountdown() { setCountdown(5); setPhase("countdown"); }
+
+  useEffect(() => {
+    if (phase !== "countdown") return;
+    if (countdown <= 0) { recorderRef.current?.start(); setPhase("recording"); return; }
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [phase, countdown]);
 
   function handleRecorded(recorded: Blob) {
     setBlob(recorded);
@@ -39,7 +47,7 @@ export default function ScanCapturePage() {
   const stream = cameraRef.current?.getStream() ?? null;
 
   return (
-    <StepLayout step={4} totalSteps={7} title="Ear-to-ear scan" subtitle="Tap the screen to start recording, then slowly turn your head left to right and back.">
+    <StepLayout step={4} totalSteps={7} title="Ear-to-ear scan" subtitle="Tap the screen to start, then slowly turn your head left to right and back.">
       <div className="space-y-3">
         <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-black">
           {phase !== "review" ? (
@@ -50,7 +58,6 @@ export default function ScanCapturePage() {
                 <>
                   <VideoRecorder ref={recorderRef} stream={stream} onRecorded={handleRecorded} maxSeconds={10} />
                   <TaskOverlay instruction="Slowly turn head left → right → left" subtext="Keep your eyes facing the camera" animate="arrow-left" />
-                  {/* Stop button */}
                   <button
                     onClick={() => recorderRef.current?.stop()}
                     className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
@@ -64,9 +71,21 @@ export default function ScanCapturePage() {
                 </>
               )}
 
+              {phase === "countdown" && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span
+                    key={countdown}
+                    className="text-white font-light drop-shadow-lg"
+                    style={{ fontSize: "6rem", lineHeight: 1 }}
+                  >
+                    {countdown === 0 ? "" : countdown}
+                  </span>
+                </div>
+              )}
+
               {phase === "ready" && (
                 <button
-                  onClick={startRecording}
+                  onClick={startCountdown}
                   className="absolute inset-0 w-full h-full flex flex-col items-center justify-end pb-8"
                   aria-label="Start recording"
                 >

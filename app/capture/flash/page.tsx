@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { CameraPreview, type CameraPreviewHandle } from "@/components/capture/CameraPreview";
 import { StepLayout } from "@/components/shared/StepLayout";
@@ -14,14 +14,19 @@ const FLASH_ASSETS: AssetType[] = ["photo_flash_1", "photo_flash_2", "photo_flas
 export default function FlashCapturePage() {
   const router = useRouter();
   const { sessionId } = useSession();
-  const { upload, uploading } = useMediaUpload(sessionId);
+  const { upload } = useMediaUpload(sessionId);
   const cameraRef = useRef<CameraPreviewHandle>(null);
-  const [status, setStatus] = useState<"ready" | "flashing" | "done">("ready");
+  const [status, setStatus] = useState<"ready" | "countdown" | "flashing" | "done">("ready");
+  const [countdown, setCountdown] = useState(5);
   const [count, setCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  function startCountdown() {
+    setCountdown(5);
+    setStatus("countdown");
+  }
+
   const runFlashSequence = useCallback(async () => {
-    if (status !== "ready") return;
     setStatus("flashing");
     setError(null);
 
@@ -46,7 +51,14 @@ export default function FlashCapturePage() {
 
     setStatus("done");
     setTimeout(() => router.push("/capture/scan"), 600);
-  }, [status, upload, router]);
+  }, [upload, router]);
+
+  useEffect(() => {
+    if (status !== "countdown") return;
+    if (countdown <= 0) { runFlashSequence(); return; }
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [status, countdown, runFlashSequence]);
 
   return (
     <StepLayout step={3} totalSteps={7} title="Screen-lit captures" subtitle="Tap the screen — it will flash white and take 3 quick photos for accurate skin colour analysis.">
@@ -56,7 +68,7 @@ export default function FlashCapturePage() {
 
           {status === "ready" && (
             <button
-              onClick={runFlashSequence}
+              onClick={startCountdown}
               className="absolute inset-0 w-full h-full flex flex-col items-center justify-end pb-8"
               aria-label="Start flash capture"
             >
@@ -65,6 +77,18 @@ export default function FlashCapturePage() {
                 <Zap className="h-6 w-6 text-white" />
               </span>
             </button>
+          )}
+
+          {status === "countdown" && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span
+                key={countdown}
+                className="text-white font-light drop-shadow-lg"
+                style={{ fontSize: "6rem", lineHeight: 1 }}
+              >
+                {countdown === 0 ? "" : countdown}
+              </span>
+            </div>
           )}
 
           {status === "flashing" && (
