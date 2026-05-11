@@ -29,13 +29,13 @@ export function ConditionCard({ score }: { score: ConditionScore }) {
         </p>
       )}
 
-      {score.featuresMatched.length > 0 && (
+      {(score.featuresMatched ?? []).length > 0 && (
         <div>
           <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-gray-400 mb-2">
             Observed features
           </p>
           <ul className="space-y-1">
-            {score.featuresMatched.map((f) => (
+            {(score.featuresMatched ?? []).map((f) => (
               <li key={f} className="flex items-center gap-2 text-sm text-gray-500">
                 <span className="h-1 w-1 rounded-full bg-gray-300 flex-shrink-0" />
                 {f}

@@ -40,9 +40,9 @@ export function UrgencyBanner({ level, reason, redFlags }: UrgencyBannerProps) {
           <p className="text-sm text-gray-500 mt-0.5">{reason}</p>
         </div>
       </div>
-      {redFlags.length > 0 && (
+      {(redFlags ?? []).length > 0 && (
         <ul className="text-xs text-gray-400 list-disc ml-8 space-y-0.5">
-          {redFlags.map((f) => <li key={f}>{f}</li>)}
+          {(redFlags ?? []).map((f) => <li key={f}>{f}</li>)}
         </ul>
       )}
     </div>

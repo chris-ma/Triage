@@ -43,13 +43,15 @@ export async function POST(req: NextRequest) {
     // Check if already analyzed
     const { data: existing } = await supabase
       .from("analysis_results")
-      .select("id, urgency_level, condition_groups")
+      .select("id, urgency_level, urgency_reason, red_flags, condition_groups")
       .eq("session_id", sessionId)
       .single();
 
     if (existing) {
       return NextResponse.json({
         urgencyLevel: existing.urgency_level,
+        urgencyReason: existing.urgency_reason,
+        redFlags: existing.red_flags ?? [],
         conditionGroups: existing.condition_groups,
         cached: true,
       });

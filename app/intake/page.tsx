@@ -1,9 +1,7 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { intakeSchema, type IntakeData } from "@/lib/validation/intakeSchema";
+import { type IntakeData } from "@/lib/validation/intakeSchema";
 import { useSession } from "@/components/shared/SessionContext";
 import { StepLayout } from "@/components/shared/StepLayout";
 import { Button } from "@/components/ui/button";
