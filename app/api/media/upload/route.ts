@@ -1,79 +1,101 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { createServiceClient } from "@/lib/supabase/server";
-import { createSignedUploadUrl } from "@/lib/supabase/storage";
+import { gql, storageUpload } from "@/lib/nhost/client";
 import type { AssetType } from "@/lib/inference/types";
 
 function notConfigured() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (!process.env.NHOST_GRAPHQL_URL || !process.env.NHOST_ADMIN_SECRET || !process.env.NHOST_STORAGE_URL) {
     return NextResponse.json({ error: "Service not configured" }, { status: 503 });
   }
   return null;
 }
 
-const schema = z.object({
-  sessionId: z.string().uuid(),
-  assetType: z.enum([
-    "photo_face",
-    "photo_flash_1",
-    "photo_flash_2",
-    "photo_flash_3",
-    "video_scan",
-    "video_speech",
-  ]),
-  mimeType: z.string(),
-  sizeBytes: z.number().optional(),
-});
+function extFromMime(mimeType: string): string {
+  if (mimeType.includes("mp4")) return "mp4";
+  if (mimeType.includes("video")) return "webm";
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("jpeg")) return "jpg";
+  return "webp";
+}
+
+const VALID_ASSET_TYPES = new Set([
+  "photo_face",
+  "photo_flash_1",
+  "photo_flash_2",
+  "photo_flash_3",
+  "video_scan",
+  "video_speech",
+]);
 
 export async function POST(req: NextRequest) {
   const cfg = notConfigured();
   if (cfg) return cfg;
   try {
-    const body = await req.json();
-    const parsed = schema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    const form = await req.formData();
+    const sessionId = form.get("sessionId") as string | null;
+    const assetType = form.get("assetType") as string | null;
+    const file = form.get("file") as Blob | null;
+
+    if (!sessionId || !assetType || !file) {
+      return NextResponse.json({ error: "Missing sessionId, assetType, or file" }, { status: 400 });
     }
 
-    const { sessionId, assetType, mimeType, sizeBytes } = parsed.data;
-    const supabase = createServiceClient();
+    if (!VALID_ASSET_TYPES.has(assetType)) {
+      return NextResponse.json({ error: "Invalid assetType" }, { status: 400 });
+    }
+
+    const mimeType = file.type || "application/octet-stream";
+    const ext = extFromMime(mimeType);
+    const filename = `${sessionId}/${assetType}-${Date.now()}.${ext}`;
 
     // Verify session exists and isn't expired
-    const { data: session, error: sessionError } = await supabase
-      .from("sessions")
-      .select("id")
-      .eq("id", sessionId)
-      .gt("expires_at", new Date().toISOString())
-      .single();
+    const { data: sessionData, error: sessionError } = await gql<{
+      sessions_by_pk: { id: string } | null;
+    }>(
+      `query GetSession($id: uuid!, $now: timestamptz!) {
+        sessions_by_pk(id: $id) { id }
+      }`,
+      { id: sessionId, now: new Date().toISOString() }
+    );
 
-    if (sessionError || !session) {
+    if (sessionError || !sessionData?.sessions_by_pk) {
       return NextResponse.json({ error: "Session not found or expired" }, { status: 404 });
     }
 
-    const { signedUrl, path } = await createSignedUploadUrl(
-      sessionId,
-      assetType as AssetType,
-      mimeType
+    // Upload file to Nhost Storage
+    const stored = await storageUpload(file, filename);
+    if (!stored) {
+      return NextResponse.json({ error: "Storage upload failed" }, { status: 500 });
+    }
+
+    // Register media asset in DB
+    const { data: assetData, error: assetError } = await gql<{
+      insert_media_assets_one: { id: string } | null;
+    }>(
+      `mutation InsertMediaAsset($session_id: uuid!, $asset_type: String!, $storage_path: String!, $mime_type: String!, $size_bytes: bigint) {
+        insert_media_assets_one(object: {
+          session_id: $session_id
+          asset_type: $asset_type
+          storage_path: $storage_path
+          mime_type: $mime_type
+          size_bytes: $size_bytes
+        }) { id }
+      }`,
+      {
+        session_id: sessionId,
+        asset_type: assetType as AssetType,
+        storage_path: stored.id,
+        mime_type: mimeType,
+        size_bytes: file.size ?? null,
+      }
     );
 
-    const { data: asset, error: assetError } = await supabase
-      .from("media_assets")
-      .insert({
-        session_id: sessionId,
-        asset_type: assetType,
-        storage_path: path,
-        mime_type: mimeType,
-        size_bytes: sizeBytes ?? null,
-      })
-      .select("id")
-      .single();
-
-    if (assetError || !asset) {
+    if (assetError || !assetData?.insert_media_assets_one) {
       return NextResponse.json({ error: "Failed to register media asset" }, { status: 500 });
     }
 
-    return NextResponse.json({ signedUrl, assetId: asset.id, path }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ assetId: assetData.insert_media_assets_one.id }, { status: 201 });
+  } catch (err) {
+    console.error("[media/upload] error:", err);
+    return NextResponse.json({ error: "Internal server error", detail: String(err) }, { status: 500 });
   }
 }

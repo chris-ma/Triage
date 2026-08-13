@@ -12,30 +12,21 @@ export function useMediaUpload(sessionId: string | null) {
     setUploading(true);
     setError(null);
     try {
-      // Get signed URL
+      const form = new FormData();
+      form.append("sessionId", sessionId);
+      form.append("assetType", assetType);
+      form.append("file", blob);
+
       const res = await fetch("/api/media/upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId,
-          assetType,
-          mimeType: blob.type,
-          sizeBytes: blob.size,
-        }),
+        body: form,
       });
-      if (!res.ok) throw new Error("Failed to get upload URL");
-      const { signedUrl } = await res.json();
 
-      // Upload blob directly to Supabase Storage
-      const uploadRes = await fetch(signedUrl, {
-        method: "PUT",
-        body: blob,
-        headers: { "Content-Type": blob.type },
-      });
-      if (!uploadRes.ok) {
-        const body = await uploadRes.text().catch(() => "");
-        throw new Error(`Upload failed (${uploadRes.status})${body ? `: ${body.slice(0, 120)}` : ""}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: "Upload failed" }));
+        throw new Error(body.error ?? `Upload failed (${res.status})`);
       }
+
       return true;
     } catch (err) {
       setError((err as Error).message);

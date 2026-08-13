@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createServiceClient } from "@/lib/supabase/server";
+import { gql } from "@/lib/nhost/client";
+import { generateDoctorSummary } from "@/lib/claude/summaryGenerator";
+import type { ConditionScore } from "@/lib/inference/types";
 
 function notConfigured() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!process.env.NHOST_GRAPHQL_URL || !process.env.NHOST_ADMIN_SECRET) {
+    return NextResponse.json({ error: "Nhost not configured" }, { status: 503 });
   }
   if (!process.env.DEEPSEEK_API_KEY) {
     return NextResponse.json({ error: "DEEPSEEK_API_KEY is not set — add it in Vercel environment variables" }, { status: 503 });
   }
   return null;
 }
-import { generateDoctorSummary } from "@/lib/claude/summaryGenerator";
-import type { ConditionScore } from "@/lib/inference/types";
 
 const schema = z.object({ sessionId: z.string().uuid() });
 
@@ -27,41 +27,63 @@ export async function POST(req: NextRequest) {
     }
 
     const { sessionId } = parsed.data;
-    const supabase = createServiceClient();
 
     // Check for cached summary
-    const { data: cached } = await supabase
-      .from("doctor_summaries")
-      .select("summary_text, model_used")
-      .eq("session_id", sessionId)
-      .single();
+    const { data: cachedData } = await gql<{
+      doctor_summaries: Array<{ summary_text: string; model_used: string }>;
+    }>(
+      `query GetSummary($session_id: uuid!) {
+        doctor_summaries(where: { session_id: { _eq: $session_id } }, limit: 1) {
+          summary_text model_used
+        }
+      }`,
+      { session_id: sessionId }
+    );
 
+    const cached = cachedData?.doctor_summaries?.[0];
     if (cached) {
       return NextResponse.json({ summaryText: cached.summary_text, cached: true });
     }
 
     // Load analysis results
-    const { data: analysis, error: analysisError } = await supabase
-      .from("analysis_results")
-      .select("urgency_level, urgency_reason, red_flags, condition_groups, engine_version, created_at")
-      .eq("session_id", sessionId)
-      .single();
+    const { data: analysisData, error: analysisError } = await gql<{
+      analysis_results: Array<{
+        urgency_level: string;
+        urgency_reason: string;
+        red_flags: string[];
+        condition_groups: unknown;
+        engine_version: string;
+        created_at: string;
+      }>;
+    }>(
+      `query GetAnalysisForSummary($session_id: uuid!) {
+        analysis_results(where: { session_id: { _eq: $session_id } }, limit: 1) {
+          urgency_level urgency_reason red_flags condition_groups engine_version created_at
+        }
+      }`,
+      { session_id: sessionId }
+    );
 
+    const analysis = analysisData?.analysis_results?.[0];
     if (analysisError || !analysis) {
       return NextResponse.json({ error: "Analysis not found — run analysis first" }, { status: 404 });
     }
 
     // Load session intake data
-    const { data: session, error: sessionError } = await supabase
-      .from("sessions")
-      .select("intake_data, created_at")
-      .eq("id", sessionId)
-      .gt("expires_at", new Date().toISOString())
-      .single();
+    const { data: sessionData, error: sessionError } = await gql<{
+      sessions_by_pk: { intake_data: Record<string, unknown>; created_at: string } | null;
+    }>(
+      `query GetSessionIntake($id: uuid!) {
+        sessions_by_pk(id: $id) { intake_data created_at }
+      }`,
+      { id: sessionId }
+    );
 
-    if (sessionError || !session) {
+    if (sessionError || !sessionData?.sessions_by_pk) {
       return NextResponse.json({ error: "Session not found or expired" }, { status: 404 });
     }
+
+    const session = sessionData.sessions_by_pk;
 
     const { summaryText, modelUsed, promptHash } = await generateDoctorSummary({
       sessionId,
@@ -75,18 +97,30 @@ export async function POST(req: NextRequest) {
     });
 
     // Persist summary
-    await supabase.from("doctor_summaries").insert({
-      session_id: sessionId,
-      summary_text: summaryText,
-      model_used: modelUsed,
-      prompt_hash: promptHash,
-    });
+    await gql(
+      `mutation InsertSummary($session_id: uuid!, $summary_text: String!, $model_used: String!, $prompt_hash: String!) {
+        insert_doctor_summaries_one(object: {
+          session_id: $session_id
+          summary_text: $summary_text
+          model_used: $model_used
+          prompt_hash: $prompt_hash
+        }) { id }
+      }`,
+      {
+        session_id: sessionId,
+        summary_text: summaryText,
+        model_used: modelUsed,
+        prompt_hash: promptHash,
+      }
+    );
 
     // Mark session complete
-    await supabase
-      .from("sessions")
-      .update({ status: "complete" })
-      .eq("id", sessionId);
+    await gql(
+      `mutation UpdateSessionStatus($id: uuid!, $status: String!) {
+        update_sessions_by_pk(pk_columns: { id: $id }, _set: { status: $status }) { id }
+      }`,
+      { id: sessionId, status: "complete" }
+    );
 
     return NextResponse.json({ summaryText });
   } catch (err) {
