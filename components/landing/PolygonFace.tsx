@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { FACE_POSITIONS, FACE_INDICES } from "@/lib/mesh/faceMesh";
 
 export default function PolygonFace() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -12,7 +13,7 @@ export default function PolygonFace() {
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, container.clientWidth / container.clientHeight, 0.1, 100);
-    camera.position.z = 4.2;
+    camera.position.z = 3.9;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -20,63 +21,28 @@ export default function PolygonFace() {
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
 
-    // Base icosahedron — detail 3 gives ~320 faces, enough for a face silhouette
-    const base = new THREE.IcosahedronGeometry(1, 3);
-    const pos = base.attributes.position;
-
-    for (let i = 0; i < pos.count; i++) {
-      let x = pos.getX(i);
-      let y = pos.getY(i);
-      let z = pos.getZ(i);
-
-      // Elongate vertically
-      y *= 1.28;
-
-      // Taper chin
-      if (y < -0.18) {
-        const t = Math.min(1, (-y - 0.18) / 0.82);
-        x *= 1 - t * 0.52;
-        z *= 1 - t * 0.28;
-      }
-
-      // Slight forehead narrowing
-      if (y > 0.65) {
-        const t = Math.min(1, (y - 0.65) / 0.6);
-        x *= 1 - t * 0.12;
-      }
-
-      // Front-face only deformations
-      if (z > 0) {
-        // Eye socket depressions
-        const eyeL = Math.sqrt((x + 0.31) ** 2 + (y - 0.22) ** 2);
-        const eyeR = Math.sqrt((x - 0.31) ** 2 + (y - 0.22) ** 2);
-        const dent = (Math.max(0, 0.26 - eyeL) + Math.max(0, 0.26 - eyeR)) * 0.45;
-
-        // Nose bridge protrusion
-        const nose = Math.max(0, 0.14 - Math.sqrt(x ** 2 + (y + 0.02) ** 2)) * 0.35;
-
-        z += nose - dent;
-      }
-
-      pos.setXYZ(i, x, y, z);
-    }
-
+    // Real face topology — the 468-vertex canonical mesh used by face landmark
+    // detection, rather than a deformed primitive.
+    const base = new THREE.BufferGeometry();
+    base.setAttribute("position", new THREE.Float32BufferAttribute(FACE_POSITIONS, 3));
+    base.setIndex(FACE_INDICES);
     base.computeVertexNormals();
 
-    // Wireframe edges
-    const edgesGeo = new THREE.EdgesGeometry(base);
-    const edgesMat = new THREE.LineBasicMaterial({
+    // WireframeGeometry (not EdgesGeometry) so every triangle edge is drawn —
+    // EdgesGeometry would merge near-coplanar faces and thin out the mesh.
+    const wireGeo = new THREE.WireframeGeometry(base);
+    const wireMat = new THREE.LineBasicMaterial({
       color: 0x374151,
       transparent: true,
       opacity: 0.1,
     });
-    const lines = new THREE.LineSegments(edgesGeo, edgesMat);
+    const lines = new THREE.LineSegments(wireGeo, wireMat);
     scene.add(lines);
 
-    // Vertex dots
+    // Vertex dots — these sit exactly on the 468 landmark points
     const dotsMat = new THREE.PointsMaterial({
       color: 0x374151,
-      size: 0.025,
+      size: 0.018,
       transparent: true,
       opacity: 0.28,
       sizeAttenuation: true,
@@ -161,8 +127,8 @@ export default function PolygonFace() {
       window.removeEventListener("scroll", onScroll);
       renderer.dispose();
       base.dispose();
-      edgesGeo.dispose();
-      edgesMat.dispose();
+      wireGeo.dispose();
+      wireMat.dispose();
       dotsMat.dispose();
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
