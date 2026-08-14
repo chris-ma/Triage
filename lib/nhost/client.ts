@@ -1,6 +1,8 @@
-const GRAPHQL_URL = process.env.NHOST_GRAPHQL_URL!;
-const STORAGE_URL = process.env.NHOST_STORAGE_URL!;
-const ADMIN_SECRET = process.env.NHOST_ADMIN_SECRET!;
+// Trimmed because pasting into a dashboard env var field commonly picks up a
+// trailing newline or space, which Hasura rejects as an invalid admin secret.
+const GRAPHQL_URL = (process.env.NHOST_GRAPHQL_URL ?? "").trim();
+const STORAGE_URL = (process.env.NHOST_STORAGE_URL ?? "").trim();
+const ADMIN_SECRET = (process.env.NHOST_ADMIN_SECRET ?? "").trim();
 
 export async function gql<T = unknown>(
   query: string,

@@ -46,8 +46,10 @@ CREATE TABLE IF NOT EXISTS doctor_summaries (
 `;
 
 export async function GET() {
-  const graphqlUrl = process.env.NHOST_GRAPHQL_URL;
-  const adminSecret = process.env.NHOST_ADMIN_SECRET;
+  const rawUrl = process.env.NHOST_GRAPHQL_URL ?? "";
+  const rawSecret = process.env.NHOST_ADMIN_SECRET ?? "";
+  const graphqlUrl = rawUrl.trim();
+  const adminSecret = rawSecret.trim();
 
   if (!graphqlUrl || !adminSecret) {
     return NextResponse.json(
@@ -75,7 +77,29 @@ export async function GET() {
 
   if (!sqlRes.ok) {
     const body = await sqlRes.text();
-    return NextResponse.json({ error: "SQL failed", detail: body }, { status: 500 });
+
+    // Auth failures are almost always a bad paste, so report enough shape
+    // information to spot it without echoing the secret itself.
+    if (sqlRes.status === 401 || body.includes("admin-secret") || body.includes("access-key")) {
+      return NextResponse.json(
+        {
+          error: "Hasura rejected the admin secret",
+          detail: body.slice(0, 300),
+          diagnostics: {
+            hasuraUrl: baseUrl,
+            secretLength: adminSecret.length,
+            secretHadSurroundingWhitespace: rawSecret !== rawSecret.trim(),
+            secretStartsWith: adminSecret.slice(0, 3),
+            secretEndsWith: adminSecret.slice(-3),
+            looksLikeJwtSecretJson: adminSecret.startsWith("{"),
+          },
+          hint: "Copy the value from Nhost dashboard → Settings → Hasura → Admin Secret. Do not use the JWT Secret. After updating the variable in Vercel you must redeploy for it to take effect.",
+        },
+        { status: 401 }
+      );
+    }
+
+    return NextResponse.json({ error: "SQL failed", detail: body.slice(0, 500) }, { status: 500 });
   }
 
   // Step 2: track each table in Hasura so they appear in the GraphQL schema
